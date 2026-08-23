@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
-import Image from "next/image";
+import React, { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import gsap from "gsap";
@@ -18,7 +17,6 @@ const HeroSection = () => {
   const typeTextRef = useRef(null);
   const subheadlineRef = useRef(null);
   const buttonsRef = useRef(null);
-  const imageRef = useRef(null);
   const wrapperRef = useRef(null);
   const glow1Ref = useRef(null);
   const glow2Ref = useRef(null);
