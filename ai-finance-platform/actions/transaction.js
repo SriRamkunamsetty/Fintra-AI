@@ -6,13 +6,62 @@ import { revalidatePath } from "next/cache";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import aj from "@/lib/arcjet";
 import { request } from "@arcjet/next";
+import { z } from "zod";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-const serializeAmount = (obj) => ({
-  ...obj,
-  amount: obj.amount.toNumber(),
+const MAX_RECEIPT_SIZE = 5 * 1024 * 1024;
+const RECEIPT_CATEGORIES = [
+  "housing",
+  "transportation",
+  "groceries",
+  "utilities",
+  "entertainment",
+  "food",
+  "shopping",
+  "healthcare",
+  "education",
+  "personal",
+  "travel",
+  "insurance",
+  "gifts",
+  "bills",
+  "other-expense",
+];
+const receiptSchema = z.object({
+  amount: z.coerce.number().finite().positive(),
+  date: z.string().trim().min(1),
+  description: z.string().trim().min(1).max(240),
+  merchantName: z.string().trim().min(1).max(160),
+  category: z.enum(RECEIPT_CATEGORIES),
 });
+
+const serializeDecimalFields = (obj) => {
+  const serialized = { ...obj };
+
+  if (obj.amount?.toNumber) {
+    serialized.amount = obj.amount.toNumber();
+  }
+
+  if (obj.balance?.toNumber) {
+    serialized.balance = obj.balance.toNumber();
+  }
+
+  return serialized;
+};
+
+const validateTransactionData = (data) => {
+  const amount = Number(data.amount);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("Transaction amount must be a positive number");
+  }
+
+  if (!data.accountId || !["INCOME", "EXPENSE"].includes(data.type)) {
+    throw new Error("Invalid transaction account or type");
+  }
+
+  return { ...data, amount };
+};
 
 // Create Transaction
 export async function createTransaction(data) {
@@ -54,37 +103,43 @@ export async function createTransaction(data) {
       throw new Error("User not found");
     }
 
-    const account = await db.account.findUnique({
-      where: {
-        id: data.accountId,
-        userId: user.id,
-      },
-    });
+    const validatedData = validateTransactionData(data);
 
-    if (!account) {
-      throw new Error("Account not found");
-    }
-
-    // Calculate new balance
-    const balanceChange = data.type === "EXPENSE" ? -data.amount : data.amount;
-    const newBalance = account.balance.toNumber() + balanceChange;
-
-    // Create transaction and update account balance
+    // Create the transaction and update the balance atomically.
     const transaction = await db.$transaction(async (tx) => {
+      const account = await tx.account.findFirst({
+        where: {
+          id: validatedData.accountId,
+          userId: user.id,
+        },
+        select: { id: true },
+      });
+
+      if (!account) {
+        throw new Error("Account not found");
+      }
+
       const newTransaction = await tx.transaction.create({
         data: {
-          ...data,
+          ...validatedData,
           userId: user.id,
           nextRecurringDate:
-            data.isRecurring && data.recurringInterval
-              ? calculateNextRecurringDate(data.date, data.recurringInterval)
+            validatedData.isRecurring && validatedData.recurringInterval
+              ? calculateNextRecurringDate(validatedData.date, validatedData.recurringInterval)
               : null,
         },
       });
 
       await tx.account.update({
-        where: { id: data.accountId },
-        data: { balance: newBalance },
+        where: { id: account.id },
+        data: {
+          balance: {
+            increment:
+              validatedData.type === "EXPENSE"
+                ? -validatedData.amount
+                : validatedData.amount,
+          },
+        },
       });
 
       return newTransaction;
@@ -93,7 +148,7 @@ export async function createTransaction(data) {
     revalidatePath("/dashboard");
     revalidatePath(`/account/${transaction.accountId}`);
 
-    return { success: true, data: serializeAmount(transaction) };
+    return { success: true, data: serializeDecimalFields(transaction) };
   } catch (error) {
     throw new Error(error.message);
   }
@@ -109,7 +164,7 @@ export async function getTransaction(id) {
 
   if (!user) throw new Error("User not found");
 
-  const transaction = await db.transaction.findUnique({
+  const transaction = await db.transaction.findFirst({
     where: {
       id,
       userId: user.id,
@@ -118,7 +173,7 @@ export async function getTransaction(id) {
 
   if (!transaction) throw new Error("Transaction not found");
 
-  return serializeAmount(transaction);
+  return serializeDecimalFields(transaction);
 }
 
 export async function updateTransaction(id, data) {
@@ -132,63 +187,73 @@ export async function updateTransaction(id, data) {
 
     if (!user) throw new Error("User not found");
 
-    // Get original transaction to calculate balance change
-    const originalTransaction = await db.transaction.findUnique({
-      where: {
-        id,
-        userId: user.id,
-      },
-      include: {
-        account: true,
-      },
-    });
+    const validatedData = validateTransactionData(data);
 
-    if (!originalTransaction) throw new Error("Transaction not found");
-
-    // Calculate balance changes
-    const oldBalanceChange =
-      originalTransaction.type === "EXPENSE"
-        ? -originalTransaction.amount.toNumber()
-        : originalTransaction.amount.toNumber();
-
-    const newBalanceChange =
-      data.type === "EXPENSE" ? -data.amount : data.amount;
-
-    const netBalanceChange = newBalanceChange - oldBalanceChange;
-
-    // Update transaction and account balance in a transaction
+    // Re-read and mutate all affected records in one transaction so the
+    // original transaction and account balances cannot drift apart.
     const transaction = await db.$transaction(async (tx) => {
-      const updated = await tx.transaction.update({
+      const originalTransaction = await tx.transaction.findFirst({
+        where: { id, userId: user.id },
+      });
+
+      if (!originalTransaction) throw new Error("Transaction not found");
+
+      const destinationAccount = await tx.account.findFirst({
         where: {
-          id,
+          id: validatedData.accountId,
           userId: user.id,
         },
+        select: { id: true },
+      });
+
+      if (!destinationAccount) throw new Error("Account not found");
+
+      const oldBalanceChange =
+        originalTransaction.type === "EXPENSE"
+          ? -originalTransaction.amount.toNumber()
+          : originalTransaction.amount.toNumber();
+      const newBalanceChange =
+        validatedData.type === "EXPENSE"
+          ? -validatedData.amount
+          : validatedData.amount;
+
+      if (originalTransaction.accountId === destinationAccount.id) {
+        await tx.account.update({
+          where: { id: destinationAccount.id },
+          data: {
+            balance: { increment: newBalanceChange - oldBalanceChange },
+          },
+        });
+      } else {
+        await tx.account.update({
+          where: { id: originalTransaction.accountId },
+          data: { balance: { increment: -oldBalanceChange } },
+        });
+        await tx.account.update({
+          where: { id: destinationAccount.id },
+          data: { balance: { increment: newBalanceChange } },
+        });
+      }
+
+      return tx.transaction.update({
+        where: { id },
         data: {
-          ...data,
+          ...validatedData,
           nextRecurringDate:
-            data.isRecurring && data.recurringInterval
-              ? calculateNextRecurringDate(data.date, data.recurringInterval)
+            validatedData.isRecurring && validatedData.recurringInterval
+              ? calculateNextRecurringDate(validatedData.date, validatedData.recurringInterval)
               : null,
         },
       });
-
-      // Update account balance
-      await tx.account.update({
-        where: { id: data.accountId },
-        data: {
-          balance: {
-            increment: netBalanceChange,
-          },
-        },
-      });
-
-      return updated;
     });
 
     revalidatePath("/dashboard");
-    revalidatePath(`/account/${data.accountId}`);
+    revalidatePath(`/account/${transaction.accountId}`);
+    if (transaction.accountId !== data.accountId) {
+      revalidatePath(`/account/${data.accountId}`);
+    }
 
-    return { success: true, data: serializeAmount(transaction) };
+    return { success: true, data: serializeDecimalFields(transaction) };
   } catch (error) {
     throw new Error(error.message);
   }
@@ -210,8 +275,8 @@ export async function getUserTransactions(query = {}) {
 
     const transactions = await db.transaction.findMany({
       where: {
-        userId: user.id,
         ...query,
+        userId: user.id,
       },
       include: {
         account: true,
@@ -221,30 +286,75 @@ export async function getUserTransactions(query = {}) {
       },
     });
 
-    return { success: true, data: transactions };
+    return {
+      success: true,
+      data: transactions.map((transaction) => ({
+        ...serializeDecimalFields(transaction),
+        account: transaction.account
+          ? serializeDecimalFields(transaction.account)
+          : transaction.account,
+      })),
+    };
   } catch (error) {
     throw new Error(error.message);
   }
 }
 
 // Scan Receipt
+const hasSupportedImageSignature = (bytes, mimeType) => {
+  if (mimeType === "image/jpeg") {
+    return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  }
+  if (mimeType === "image/png") {
+    return bytes.slice(0, 8).join(",") === "137,80,78,71,13,10,26,10";
+  }
+  if (mimeType === "image/gif") {
+    return new TextDecoder().decode(bytes.slice(0, 4)) === "GIF8";
+  }
+  if (mimeType === "image/webp") {
+    return (
+      new TextDecoder().decode(bytes.slice(0, 4)) === "RIFF" &&
+      new TextDecoder().decode(bytes.slice(8, 12)) === "WEBP"
+    );
+  }
+  return false;
+};
+
 export async function scanReceipt(file) {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
 
-    // Convert File to ArrayBuffer
+    const req = await request();
+    const decision = await aj.protect(req, { userId, requested: 1 });
+    if (decision.isDenied()) throw new Error("Receipt scan request blocked");
+
+    if (!file || typeof file.arrayBuffer !== "function") {
+      throw new Error("A receipt image is required");
+    }
+    if (!file.size || file.size > MAX_RECEIPT_SIZE) {
+      throw new Error("Receipt image must be between 1 byte and 5 MB");
+    }
+    if (!["image/jpeg", "image/png", "image/gif", "image/webp"].includes(file.type)) {
+      throw new Error("Only JPEG, PNG, GIF, and WebP receipts are supported");
+    }
+
     const arrayBuffer = await file.arrayBuffer();
-    // Convert ArrayBuffer to Base64
-    const base64String = Buffer.from(arrayBuffer).toString("base64");
+    const bytes = new Uint8Array(arrayBuffer);
+    if (!hasSupportedImageSignature(bytes, file.type)) {
+      throw new Error("Receipt content does not match its image type");
+    }
 
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const base64String = Buffer.from(arrayBuffer).toString("base64");
     const prompt = `
       Analyze this receipt image and extract the following information in JSON format:
       - Total amount (just the number)
       - Date (in ISO format)
       - Description or items purchased (brief summary)
       - Merchant/store name
-      - Suggested category (one of: housing,transportation,groceries,utilities,entertainment,food,shopping,healthcare,education,personal,travel,insurance,gifts,bills,other-expense )
-      
+      - Suggested category (one of: ${RECEIPT_CATEGORIES.join(", ")})
+
       Only respond with valid JSON in this exact format:
       {
         "amount": number,
@@ -253,40 +363,27 @@ export async function scanReceipt(file) {
         "merchantName": "string",
         "category": "string"
       }
-
-      If its not a recipt, return an empty object
     `;
 
     const result = await model.generateContent([
-      {
-        inlineData: {
-          data: base64String,
-          mimeType: file.type,
-        },
-      },
+      { inlineData: { data: base64String, mimeType: file.type } },
       prompt,
     ]);
-
     const response = await result.response;
-    const text = response.text();
-    const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
+    const cleanedText = response.text().replace(/```(?:json)?\n?/g, "").trim();
+    const parsed = receiptSchema.safeParse(JSON.parse(cleanedText));
 
-    try {
-      const data = JSON.parse(cleanedText);
-      return {
-        amount: parseFloat(data.amount),
-        date: new Date(data.date),
-        description: data.description,
-        category: data.category,
-        merchantName: data.merchantName,
-      };
-    } catch (parseError) {
-      console.error("Error parsing JSON response:", parseError);
-      throw new Error("Invalid response format from Gemini");
+    if (!parsed.success || Number.isNaN(new Date(parsed.data?.date).getTime())) {
+      throw new Error("Invalid receipt data returned by Gemini");
     }
+
+    return {
+      ...parsed.data,
+      date: new Date(parsed.data.date),
+    };
   } catch (error) {
     console.error("Error scanning receipt:", error);
-    throw new Error("Failed to scan receipt");
+    throw new Error(error.message || "Failed to scan receipt");
   }
 }
 

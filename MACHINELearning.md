@@ -311,27 +311,54 @@ Implementation: `ml/inference/predict_anomaly.py` (`detect_transaction_anomaly`)
 
 ---
 
-## Phase 10 — Investment Recommendation
+## Phase 10 — Investment Recommendation & Portfolio Allocator ✅ (Implemented)
 
-Recommend
+### Objective
 
-- SIP
-- Stocks
-- ETFs
-- Mutual Funds
-- Gold
+Predict personalized multi-asset allocation percentages (Equity, Debt, Gold, REITs, Cash), actionable monthly SIP distribution in INR, compounding multi-year wealth projections, and curated fund instruments.
 
-Input
+Features
 
-- Salary
-- Risk
-- Age
-- Goals
+- Monthly Income & Monthly Disposable Surplus (INR)
+- Age & Target Investment Horizon (1 to 15 years)
+- Risk Profile (`CONSERVATIVE`, `MODERATE`, `BALANCED`, `GROWTH`, `AGGRESSIVE`) & Risk Score (1 to 5)
+- Liquid Emergency Runway Buffer (Months) & Existing Net Savings
+- Existing Debt Obligations
 
 Models
 
-- Gradient Boosting
-- Recommendation System
+- Multi-Output Random Forest Regressor (Selected Production Model - CV MAE: 0.448%, R²: 0.9910)
+- Multi-Output Extra Trees Regressor & XGBoost Regressors
+- Constrained Simplex Stacking Ensemble Regressor
+- Compounding Future Value SIP Projector
+
+Output
+
+```json
+{
+  "recommended_allocation_pct": {
+    "equity_pct": 71.7,
+    "debt_pct": 4.3,
+    "gold_pct": 4.1,
+    "reit_pct": 8.0,
+    "cash_pct": 12.0
+  },
+  "monthly_sip_distribution_inr": {
+    "equity_sip_inr": 32265.0,
+    "debt_sip_inr": 1935.0,
+    "gold_sip_inr": 1845.0,
+    "reit_sip_inr": 3600.0,
+    "cash_buffer_inr": 5400.0
+  },
+  "portfolio_expected_cagr_pct": 11.76,
+  "wealth_growth_projections": {
+    "projected_wealth_7yr": 5855483.79,
+    "growth_multiple": 1.53
+  }
+}
+```
+
+Implementation: `ml/preprocessing/preprocess_investment.py`, `ml/training/train_investment.py`, `ml/evaluation/evaluate_investment.py`, `ml/inference/predict_investment.py`
 
 ---
 
@@ -369,42 +396,141 @@ Implementation: `ml/preprocessing/preprocess_goals.py`, `ml/training/train_goals
 
 ---
 
-## Phase 12 — Loan Eligibility Prediction
+## Phase 12 — Loan Underwriting & Credit Risk Engine ✅ (Implemented)
+
+### Objective
+
+Predict loan eligibility verdicts (`APPROVED` vs `DECLINED`), credit risk tiers (`LOW_RISK`, `MODERATE_RISK`, `HIGH_RISK`), calibrated default probabilities (0–100%), exact amortized EMIs, maximum safe borrowing limits, and actionable remediation advice.
+
+Features
+
+- Monthly Income & Essential Living Expenses (INR)
+- Requested Loan Amount & Loan Tenure (Months: 12 to 240)
+- Loan Purpose (`HOME_LOAN`, `PERSONAL_LOAN`, `AUTO_VEHICLE_LOAN`, `EDUCATION_LOAN`, `BUSINESS_EXPANSION`)
+- Existing Monthly EMIs & Total Outstanding Debt
+- Credit Score (300 to 900) & Employment Stability Index
+- Liquid Savings Reserve & Post-EMI Disposable Cushion
+- FOIR / DTI Ratio ($\le 50\%$ banking ceiling)
 
 Models
 
-- Logistic Regression
-- XGBoost
+- Tuned XGBoost Classifier (Selected Production Model - PR-AUC: 0.9499, ROC-AUC: 0.9642, F1: 0.9527)
+- Balanced Random Forest Classifier (Subsample class weighting)
+- Gradient Boosting & Extra Trees Classifiers
+- Soft-Voting Stacking Ensemble with Isotonic Probability Calibration
 
 Output
 
-- Eligible
-- High Risk
-- Medium Risk
+```json
+{
+  "verdict": "ELIGIBLE",
+  "approval_status": "APPROVED",
+  "risk_tier": "LOW_RISK",
+  "default_probability_pct": 1.91,
+  "credit_health_grade": "PRIME_TIER",
+  "proposed_loan_terms": {
+    "requested_amount_inr": 3500000.0,
+    "annual_interest_rate_pct": 7.75,
+    "calculated_monthly_emi_inr": 32944.65,
+    "foir_ratio_pct": 26.36
+  },
+  "max_safe_borrowing_limit_inr": 7303917.03,
+  "actionable_underwriting_tips": [
+    "Loan sanctioned: FOIR is healthy at 26.36% (below the 55% ceiling).",
+    "Prime credit score (780) unlocks a preferential interest rate of 7.75% p.a."
+  ]
+}
+```
+
+Implementation: `ml/preprocessing/preprocess_loan.py`, `ml/training/train_loan.py`, `ml/evaluation/evaluate_loan.py`, `ml/inference/predict_loan.py`
 
 ---
 
-## Phase 13 — Credit Score Estimator
+## Phase 13 — Credit Score Estimator & 5-Pillar Simulator ✅ (Implemented)
 
-Predict credit score using
+### Objective
 
-- Income
-- Savings
-- Loans
-- Expenses
-- Debt
+Estimate credit score (300 to 900 range), credit rating tier (`EXCELLENT`, `GOOD`, `FAIR`, `POOR`, `VERY_POOR`), 5-pillar FICO/CIBIL diagnostic breakdown, and actionable "What-If" credit repair simulation scenarios.
+
+Features
+
+- Credit Utilization Ratio (Total Limit vs Total Used Balance)
+- On-Time Payment History Percentage (0–100%) & 2-Year Delinquency Count
+- Credit History Age (Years of active trade lines)
+- Credit Mix (Secured Mortgages/Auto vs Unsecured Cards/Personal Loans)
+- Hard Credit Inquiries in the past 6 months
+- Monthly Income & Total Existing Debt Obligations
+
+Models
+
+- HistGradientBoostingRegressor (Selected Production Model - CV MAE: 4.32 points, R²: 0.9953, <2ms inference)
+- Fast XGBoost Regressor (`tree_method='hist'`)
+- Parallel Extra Trees & Random Forest Regressors
+- What-If Simulation Engine (`simulate_credit_score_actions`)
+
+Output
+
+```json
+{
+  "estimated_credit_score": 854,
+  "score_scale": "300 - 900",
+  "credit_tier": "EXCELLENT",
+  "risk_grade": "A+",
+  "loan_approval_odds": "VERY_HIGH",
+  "credit_summary": {
+    "credit_utilization_pct": 11.2,
+    "on_time_payment_pct": 100.0,
+    "credit_history_years": 7.5
+  },
+  "five_pillar_diagnostics": {
+    "payment_history": {"score_100": 100.0, "rating": "EXCELLENT"},
+    "credit_utilization": {"score_100": 98.4, "rating": "EXCELLENT"},
+    "credit_history_age": {"score_100": 75.0, "rating": "MATURE"}
+  },
+  "what_if_score_simulations": [
+    {
+      "action": "Pay down revolving credit card balance by INR 67,000",
+      "projected_points_gain": "+65 points",
+      "projected_new_score": 548
+    }
+  ]
+}
+```
+
+Implementation: `ml/preprocessing/preprocess_credit.py`, `ml/training/train_credit.py`, `ml/evaluation/evaluate_credit.py`, `ml/inference/predict_credit.py`
 
 ---
 
-## Phase 14 — Subscription Detection
+## Phase 14 — Subscription Detection ✅ (Implemented)
 
-Automatically identify
+### Objective
 
-- Netflix
-- Prime
-- Spotify
-- Gym
-- Other recurring subscriptions
+Automatically identify recurring charges, predict billing cadence (`MONTHLY`, `ANNUAL`, `WEEKLY`, `QUARTERLY`), calculate next renewal dates, and flag silent price hikes.
+
+Features
+
+- Subword Character n-grams & TF-IDF Merchant Representation
+- Recurring Interval Mean & Standard Deviation (Periodic consistency)
+- Charge Amount Variance & Fixed Flag
+- Historical Cycle Frequency Count
+- Base Transaction Category
+
+Models
+
+- Regularized Logistic Regression & Soft-Voting Stacking Ensemble Classifiers
+- Interval & Cadence Estimators (`estimate_cadence`)
+- Silent Price Hike & Anomaly Tracker (`detect_price_hike`)
+
+Output
+
+```
+Active Subscriptions: Netflix (INR 649/mo), Spotify (INR 119/mo), JioFiber (INR 825/mo)
+Total Monthly Burn: INR 1,593.00
+Upcoming Renewals: JioFiber on Aug 31 (7 days remaining), Netflix on Sep 22 (29 days remaining)
+Alerts: Spotify increased by 25.2% (+INR 30.00) compared to previous cycle.
+```
+
+Implementation: `ml/preprocessing/preprocess_subscriptions.py`, `ml/training/train_subscriptions.py`, `ml/evaluation/evaluate_subscriptions.py`, `ml/inference/predict_subscriptions.py`
 
 ---
 
@@ -440,37 +566,97 @@ Libraries
 
 ---
 
-## Phase 16 — Financial Recommendation Engine
+## Phase 16 — Financial Product Recommendation Engine ✅ (Implemented)
 
-Recommend
+### Objective
 
-- Budgets
-- Investments
-- Insurance
-- Savings Plans
-- Credit Cards
+Deliver hyper-personalized financial product recommendations across **5 major marketplace categories** (`CREDIT_CARDS`, `SAVINGS_AND_DEPOSITS`, `INSURANCE_PRODUCTS`, `INVESTMENT_PRODUCTS`, `LOAN_REFINANCING`) with exact Net Annual Value (NAV in INR ₹) calculations and strict anti-predatory eligibility guardrails.
 
-Models
+Features
 
-- Collaborative Filtering
-- Content-Based Recommendation
-
----
-
-## Phase 17 — Customer Segmentation
-
-Group users
-
-- Students
-- Professionals
-- Families
-- Investors
-- Business Owners
+- Monthly Category Spends (Dining, Shopping, Groceries, Travel, Fuel, Utilities)
+- Monthly Income & Liquid Savings Buffer (INR)
+- Credit Score (300 to 900) & Persona Archetype ID
+- Existing Revolving Credit Card Debt (INR)
+- Product Catalog Reward Multipliers, Annual Fees & Welcome Bonuses
 
 Algorithms
 
-- K-Means
-- DBSCAN
+- 4-Stage Multi-Stage Hybrid Ranker (Guardrails Filter + Spend Dot-Product + Net Annual Value Calculator) (Selected Production Pipeline)
+- Matrix Factorization (TruncatedSVD Collaborative Filtering)
+- Content-Based Cosine Embedding Matcher
+
+Output
+
+```json
+{
+  "total_projected_annual_value_inr": 42600.0,
+  "top_recommendations": [
+    {
+      "product_id": "CC_AIRTEL_AXIS",
+      "name": "Airtel Axis Bank Utility & Food Card",
+      "category": "CREDIT_CARDS",
+      "annual_fee_inr": 500.0,
+      "estimated_net_annual_value_inr": 42600.0,
+      "match_reason": "Earns ~INR 42,600/yr in cashbacks (led by dining) + INR 500 bonus - INR 500 fee.",
+      "key_perks": [
+        "25% cashback on Airtel mobile/DTH/broadband",
+        "10% on BigBasket, Swiggy, Zomato",
+        "10% on electricity/gas bills"
+      ]
+    }
+  ]
+}
+```
+
+Implementation: `ml/preprocessing/preprocess_recommendation.py`, `ml/training/train_recommendation.py`, `ml/evaluation/evaluate_recommendation.py`, `ml/inference/predict_recommendation.py`
+
+---
+
+## Phase 17 — Customer & Persona Segmentation Engine ✅ (Implemented)
+
+### Objective
+
+Segment users into 6 financial persona archetypes (`BUDGET_CONSCIOUS_STUDENT`, `YOUNG_TECH_PROFESSIONAL`, `BALANCED_FAMILY_HOMEMAKER`, `HIGH_NET_WORTH_INVESTOR`, `SMB_BUSINESS_OWNER`, `DEBT_REHABILITATION_SEEKER`) with calibrated multi-persona soft probabilities and tailored platform strategies.
+
+Features
+
+- Monthly Income & Income Volatility Coefficient of Variation (CV)
+- 50/30/20 Expense Ratios (`essential_expense_ratio`, `discretionary_expense_ratio`)
+- Savings Rate % & Investment-to-Surplus Ratio
+- Debt-to-Income Burden & Credit Card Utilization %
+- Emergency Fund Runway in Months
+- Monthly Transaction Frequency & Subscription Density
+
+Algorithms
+
+- Fast PCA (5 Orthogonal Components, 94.5% Variance) + K-Means++ ($K=6$) (Selected Production Pipeline)
+- Vectorized Softmax Distance Affinity Layer ($P(C_k \mid x)$)
+- MiniBatch K-Means & Diagonal Gaussian Mixture Models
+
+Output
+
+```json
+{
+  "primary_persona": {
+    "persona_id": "YOUNG_TECH_PROFESSIONAL",
+    "name": "Young Tech Professional & High-Growth Aspirer",
+    "risk_tolerance": "AGGRESSIVE",
+    "confidence_pct": 59.73
+  },
+  "soft_multi_persona_affinity_pct": {
+    "YOUNG_TECH_PROFESSIONAL": 59.73,
+    "HIGH_NET_WORTH_INVESTOR": 24.04,
+    "BALANCED_FAMILY_HOMEMAKER": 9.12
+  },
+  "tailored_platform_strategy": {
+    "budgeting_roadmap": "Automated 50/30/20 rule: route 30%+ surplus directly into investments on payday",
+    "investment_roadmap": "Aggressive equity mutual funds (70%), international ETFs (10%), debt (10%)"
+  }
+}
+```
+
+Implementation: `ml/preprocessing/preprocess_segmentation.py`, `ml/training/train_segmentation.py`, `ml/evaluation/evaluate_segmentation.py`, `ml/inference/predict_segmentation.py`
 
 ---
 

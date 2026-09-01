@@ -1,6 +1,6 @@
-# 💸 Fintra-AI
+# Fintra-AI
 
-### 🚀 AI-Powered Personal Finance Management Platform
+###  AI-Powered Personal Finance Management Platform
 
 > **Track. Understand. Predict. Improve.**
 
@@ -10,7 +10,7 @@ By combining **modern full-stack web technologies, Artificial Intelligence, Mach
 
 ---
 
-## ✨ Technology Stack
+##  Technology Stack
 
 ![Fintra-AI](https://img.shields.io/badge/Fintra--AI-AI%20Finance-6366F1?style=for-the-badge)
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge\&logo=next.js)
@@ -25,7 +25,7 @@ By combining **modern full-stack web technologies, Artificial Intelligence, Mach
 ---
 
 
-## 📌 Table of Contents
+##  Table of Contents
 
 * [Overview](#-overview)
 * [Why Fintra-AI?](#-why-fintra-ai)
@@ -50,7 +50,7 @@ By combining **modern full-stack web technologies, Artificial Intelligence, Mach
 
 ---
 
-# 📖 Overview
+#  Overview
 
 **Fintra-AI** is an AI-powered personal finance management platform designed to transform raw financial data into actionable insights.
 
@@ -58,26 +58,26 @@ Instead of simply recording transactions, Fintra-AI aims to help users understan
 
 The platform combines:
 
-* 💰 Personal finance management
-* 🤖 Generative AI
-* 🧠 Machine Learning
-* 📊 Financial analytics
-* 🔐 Secure authentication
-* ☁️ Cloud-native infrastructure
-* 📈 Predictive financial insights
+*   Personal finance management
+*   Generative AI
+*   Machine Learning
+*   Financial analytics
+*   Secure authentication
+*   Cloud-native infrastructure
+*   Predictive financial insights
 
-# 📸 Screenshot Showcase
+#  Screenshot Showcase
 
 Explore the Fintra-AI platform and its core features through the following screenshots.
 
-## 🏠 Platform Overview
+##   Platform Overview
 
 <p align="center">
   <img src="Screenshots/image1.png" alt="Fintra-AI Dashboard" width="48%">
   <img src="Screenshots/image2.png" alt="Fintra-AI Platform" width="48%">
 </p>
 
-## 📊 Financial Analytics
+##  Financial Analytics
 
 <p align="center">
   <img src="Screenshots/image3.png" alt="Fintra-AI Financial Analytics" width="48%">
@@ -86,17 +86,17 @@ Explore the Fintra-AI platform and its core features through the following scree
 
 ---
 
-### 🚀 Fintra-AI in Action
+###   Fintra-AI in Action
 
 > From expense tracking and financial analytics to AI-powered insights, Fintra-AI provides an intelligent and modern approach to personal finance management.
 
-### 🎯 Core Objective
+###   Core Objective
 
 > **Turn financial data into intelligent, personalized, and actionable financial decisions.**
 
 ---
 
-# 💡 Why Fintra-AI?
+#   Why Fintra-AI?
 
 Traditional expense trackers primarily answer:
 
@@ -119,9 +119,9 @@ This creates a shift from:
 
 ---
 
-# ✨ Key Features
+#   Key Features
 
-## 💰 Personal Finance Management
+##   Personal Finance Management
 
 * Expense Tracking
 * Income Tracking
@@ -136,7 +136,7 @@ This creates a shift from:
 
 ---
 
-## 🤖 AI Financial Intelligence
+##   AI Financial Intelligence
 
 Powered by **Google Gemini AI**, Fintra-AI can provide intelligent financial assistance such as:
 
@@ -152,7 +152,7 @@ Powered by **Google Gemini AI**, Fintra-AI can provide intelligent financial ass
 
 ---
 
-## 🧠 Machine Learning
+##   Machine Learning
 
 The planned ML engine focuses on transforming historical financial data into predictive insights.
 
@@ -435,7 +435,9 @@ Fintra-AI/
 
 ## 🏗️ Architecture Overview
 
-Fintra-AI follows a **Full-Stack AI/ML Microservice Architecture**, separating the frontend, backend APIs, machine-learning workloads, data pipelines, and infrastructure into independently maintainable layers.
+> **Current implementation note:** The runnable product is the Next.js/Prisma application in `ai-finance-platform/`. The `ml/` directory contains separate Python research and inference pipelines. The FastAPI backend, data-pipeline jobs, Terraform/monitoring infrastructure, and CI services shown in the roadmap are planned surfaces and are not currently implemented as production services.
+
+Fintra-AI currently uses a **Next.js application with server actions and a separate ML research layer**. The application integrates Clerk, Prisma/PostgreSQL, Gemini-assisted receipt/report features, Resend email, and Inngest jobs. Future backend, data-engineering, and MLOps layers should be added only when their source code and deployment instructions are committed.
 
 ```text
                          ┌─────────────────────────┐
@@ -519,13 +521,16 @@ cd Fintra-AI
 
 ## 2️⃣ Install Dependencies
 
+The runnable application is located in `ai-finance-platform/`. Install its dependencies from that directory:
+
 ```bash
-npm install
+cd ai-finance-platform
+npm ci
 ```
 
 ## 3️⃣ Configure Environment Variables
 
-Create a `.env` file in the project root.
+Create `ai-finance-platform/.env.local` from the committed `ai-finance-platform/.env.example` template.
 
 ```env
 DATABASE_URL=
@@ -657,12 +662,12 @@ docs/ml-documentation
 
 | Document             | Description                          |
 | -------------------- | ------------------------------------ |
-| `README.md`          | Project overview and setup           |
-| `PLANNING.md`        | Development roadmap and milestones   |
-| `MACHINELEARNING.md` | ML architecture and pipeline         |
-| `ARCHITECTURE.md`    | System architecture and design       |
-| `CONTRIBUTING.md`    | Contribution guidelines              |
-| `SECURITY.md`        | Security policies and best practices |
+| `README.MD` | Project overview and setup |
+| `CONTRIBUTION.MD` | Contribution guidelines |
+| `PLANNING.MD` | Development roadmap and milestones |
+| `MACHINELearning.md` | ML architecture and pipeline |
+| `ai-finance-platform/README.md` | Frontend environment variables |
+| `ml/README.md` | ML pipeline setup and usage |
 
 ---
 
@@ -687,7 +692,7 @@ docs/ml-documentation
 ## 🔵 Phase 3 — AI Financial Assistant
 
 * [ ] AI Financial Advisor
-* [ ] Gemini Integration
+* [x] Gemini Integration (receipt scanning and monthly reports)
 * [ ] AI Budget Recommendations
 * [ ] Personalized Financial Insights
 * [ ] AI Financial Copilot
@@ -704,7 +709,7 @@ docs/ml-documentation
 
 ## 🔴 Phase 5 — Advanced Platform
 
-* [ ] OCR Receipt Scanner
+* [x] OCR Receipt Scanner (Gemini-assisted)
 * [ ] Investment Tracker
 * [ ] Family Wallet
 * [ ] Voice Finance Assistant
@@ -714,7 +719,7 @@ docs/ml-documentation
 * [ ] Explainable AI
 * [ ] MLOps Pipeline
 
-📄 See `docs/PLANNING.md` for the detailed roadmap.
+📄 See `PLANNING.MD` for the detailed roadmap.
 
 ---
 
@@ -789,7 +794,7 @@ Contributions are welcome from:
 Before contributing, please read:
 
 ```text
-docs/CONTRIBUTING.md
+CONTRIBUTION.MD
 ```
 
 ---
