@@ -1006,6 +1006,15 @@ A large PR is not necessarily better than a small PR.
 
 # 🏅 Contributor Recognition
 
+### 🏆 Core Contributor
+* **Name:** SriRam Kunamsetty
+* **GitHub Profile:** [@SriRamKunamsetty](https://github.com/SriRamkunamsetty)
+* **Email:** [mohansriramkunamsetty@gmail.com](mailto:mohansriramkunamsetty@gmail.com)
+* **Program:** IEEE Summer of Code 2026
+* **Key Achievements:** Delivered 36 production pull requests across frontend architecture, edge security, multi-container DevOps, FastAPI ML inference services, macroeconomic stress testing, and real-time financial intelligence.
+
+---
+
 Contributors who make meaningful contributions may be recognized through:
 
 * GitHub contributor history

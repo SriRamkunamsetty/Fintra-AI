@@ -860,6 +860,23 @@ GitHub: **@Ashwinchauhan89**
 
 ---
 
+# 🏆 Core Contributor
+
+### SriRam Kunamsetty
+
+* **GitHub:** [@SriRamKunamsetty](https://github.com/SriRamkunamsetty)
+* **Email:** [mohansriramkunamsetty@gmail.com](mailto:mohansriramkunamsetty@gmail.com)
+* **Role:** Lead Platform & ML Systems Contributor (IEEE Summer of Code 2026)
+* **Key Contributions:** Authored and delivered 36 Pull Requests encompassing:
+  * Platform hardening, edge security with Arcjet rate-limiting, and Clerk user provisioning.
+  * Micro-service architecture: Multi-service Docker Compose orchestration and Python 3.11 FastAPI backend.
+  * Machine Learning inference endpoints: Real-time spending anomaly detection, multi-factor fraud scoring, 50/30/20 budget recommendation, 5-pillar financial health radar, goal forecasting, and multi-asset portfolio allocation.
+  * Smart OCR receipt scanner parsing, bulk bank statement CSV importer, 1-click CSV ledger exporter, and mobile drawer navigation.
+  * Macroeconomic stress tester & recession simulator, recurring subscriptions tracker, executive printable statements, and habit gamification streaks.
+  * Smart financial goals & sinking funds tracker, universal multi-currency engine & live FX converter, smart peer bill splitting, and "Buy or Wait?" AI affordability studio.
+
+---
+
 # ⭐ Support the Project
 
 If you find **Fintra-AI** useful, interesting, or valuable for learning:
